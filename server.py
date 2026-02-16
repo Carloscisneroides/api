@@ -168,10 +168,19 @@ def _parse_html(html: str, parcel_number: str) -> dict:
                 if date and not any(e["status"] == state and e["date"] == date for e in events):
                     events.append({"date": date, "status": state, "location": ""})
 
-    # Estado actual = último evento registrado
+    # Estado actual = evento con la fecha más reciente
+    # (si hay varios con la misma fecha máxima, tomar el último de la lista)
     if events:
-        current_status = events[-1]["status"]
-        current_date = events[-1]["date"]
+        def _to_tuple(d):
+            try:
+                p = d.split("-")
+                return (int(p[2]), int(p[1]), int(p[0]))
+            except Exception:
+                return (0, 0, 0)
+        max_date = max(_to_tuple(e["date"]) for e in events)
+        latest = [e for e in events if _to_tuple(e["date"]) == max_date][-1]
+        current_status = latest["status"]
+        current_date = latest["date"]
 
     # Detectar si el paquete realmente tiene datos o la página está vacía
     not_found_signals = [
