@@ -152,20 +152,26 @@ def _parse_html(html: str, parcel_number: str) -> dict:
     for i, line in enumerate(lines):
         if parcel_number in line:
             in_section = True
+            continue
         if not in_section:
             continue
         for state in BRT_STATES:
             if state.lower() in line.lower():
+                # La fecha debe aparecer DESPUÉS del estado (1-2 líneas)
                 date = ""
-                for j in range(max(0, i - 2), min(len(lines), i + 3)):
+                for j in range(i + 1, min(len(lines), i + 3)):
                     dm = date_re.search(lines[j])
                     if dm:
                         date = dm.group(0)
                         break
-                if not any(e["status"] == state and e["date"] == date for e in events):
+                # Solo agregar si tiene fecha — descarta pasos decorativos sin fecha
+                if date and not any(e["status"] == state and e["date"] == date for e in events):
                     events.append({"date": date, "status": state, "location": ""})
-                current_status = state
-                current_date = date
+
+    # Estado actual = último evento registrado
+    if events:
+        current_status = events[-1]["status"]
+        current_date = events[-1]["date"]
 
     # Detectar si el paquete realmente tiene datos o la página está vacía
     not_found_signals = [
