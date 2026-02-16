@@ -143,6 +143,17 @@ def _parse_html(html: str, parcel_number: str) -> dict:
     plain_text = soup.get_text(separator="\n")
     lines = [l.strip() for l in plain_text.split("\n") if l.strip()]
     date_re = re.compile(r"\d{2}-\d{2}-\d{4}")
+    brt_num_re = re.compile(r"\b(\d{12,15})\b")
+
+    # BRT puede redirigir a un número distinto al buscado (ej: código remitente → BRT code)
+    actual_parcel = parcel_number
+    if not any(parcel_number in line for line in lines):
+        for line in lines:
+            m = brt_num_re.search(line)
+            if m:
+                actual_parcel = m.group(1)
+                logger.info(f"BRT remapeó {parcel_number} → {actual_parcel}")
+                break
 
     events = []
     current_status = "Sconosciuto"
@@ -150,7 +161,7 @@ def _parse_html(html: str, parcel_number: str) -> dict:
     in_section = False
 
     for i, line in enumerate(lines):
-        if parcel_number in line:
+        if actual_parcel in line:
             in_section = True
             continue
         if not in_section:
@@ -192,7 +203,7 @@ def _parse_html(html: str, parcel_number: str) -> dict:
         raise ValueError(f"Paquete {parcel_number} no encontrado en mybrt.it")
 
     return {
-        "parcel_number": parcel_number,
+        "parcel_number": actual_parcel,
         "current_status": current_status,
         "current_date": current_date,
         "events": events,
